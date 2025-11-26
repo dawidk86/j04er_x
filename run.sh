@@ -63,11 +63,14 @@ scripts=(
     "ipl.sh:ipl"
     "netmon.sh:netmon"
     "pep.sh:pep"
+    "pep2.sh:pep2"
+    "pepx.sh:pepx"
     "scr.sh:scr"
     "clk.sh:clk"
     "iph.py:iph"
     "dfr.sh:dfr"
     "down.sh:down"
+    "tele.sh:tele"
     "4er.sh:4er"
 )
 
