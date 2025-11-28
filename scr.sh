@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---------------------------------------------------------
-# CUSTOM SCREENSAVER INSTALLER (MODES 2, 3, 7, 9)
+# FINAL SCREENSAVER INSTALLER (Color Cycle Bounce Text & Reordered Menu)
 # ---------------------------------------------------------
 
 # Colors for installer output
@@ -17,7 +17,7 @@ if [ "$EUID" -ne 0 ]; then
   exit
 fi
 
-echo -e "${BLUE}[*] Initializing Custom Screensaver Installer...${NC}"
+echo -e "${BLUE}[*] Initializing Final Screensaver Suite...${NC}"
 
 # 2. Dependency Check
 echo -e "${BLUE}[*] Checking Python environment...${NC}"
@@ -33,20 +33,23 @@ import time
 import datetime
 import random
 import os
+import math
 
 # --- SHARED UTILS ---
 def init_colors():
     curses.start_color()
     curses.use_default_colors()
     curses.curs_set(0) # Hide cursor
-    # Colors
-    curses.init_pair(1, curses.COLOR_GREEN, -1)
-    curses.init_pair(2, curses.COLOR_WHITE, -1) 
-    curses.init_pair(3, curses.COLOR_YELLOW, -1) 
-    curses.init_pair(4, curses.COLOR_CYAN, -1) # Nice Cyan
-    curses.init_pair(5, curses.COLOR_RED, -1)
-    curses.init_pair(6, curses.COLOR_MAGENTA, -1)
-
+    
+    # Base Colors
+    curses.init_pair(1, curses.COLOR_GREEN, -1)   # Green (Matrix)
+    curses.init_pair(2, curses.COLOR_WHITE, -1)   # White (Text/Head) 
+    curses.init_pair(3, curses.COLOR_YELLOW, -1)  # Yellow (Sand) 
+    curses.init_pair(4, curses.COLOR_CYAN, -1)    # Cyan (Base Box)
+    curses.init_pair(5, curses.COLOR_RED, -1)     # Red (Cycle 1)
+    curses.init_pair(6, curses.COLOR_MAGENTA, -1) # Magenta (Checker/Cycle 2)
+    curses.init_pair(7, curses.COLOR_BLUE, -1)    # Blue (Cycle 3)
+    
 def check_exit(stdscr):
     stdscr.nodelay(1)
     ch = stdscr.getch()
@@ -54,19 +57,33 @@ def check_exit(stdscr):
         return True
     return False
 
-# --- MODE 2: CLOCK BOX  ---
+# Safe draw function to help prevent screen shaking on edges
+def safe_addstr(stdscr, y, x, string, attr=0):
+    h, w = stdscr.getmaxyx()
+    if y >= h - 1 or x >= w - 1: return # Prevent drawing on the very last row/column
+    
+    if x + len(string) >= w:
+        string = string[:w - x - 1]
+    
+    try:
+        stdscr.addstr(y, x, string, attr)
+    except:
+        pass
+
+# --- MODE 1: CLOCK BOX (Color Changing) ---
 def run_clock_box(stdscr):
+    color_cycle = 4
+    colors = [4, 5, 6, 7] # Cyan, Red, Magenta, Blue
+    
     while True:
         if check_exit(stdscr): break
         
         max_y, max_x = stdscr.getmaxyx()
         stdscr.clear()
         
-        # Data
         t = datetime.datetime.now().strftime("%H:%M:%S")
         d = datetime.datetime.now().strftime("%Y-%m-%d")
         
-        # Layout
         lines = [
             "+" + "-"*20 + "+",
             "|   TIME: {}   |".format(t),
@@ -74,37 +91,35 @@ def run_clock_box(stdscr):
             "+" + "-"*20 + "+"
         ]
         
-        # Center coordinates
-        start_y = (max_y // 2) - (len(lines) // 2)
+        start_y = (max_y // 2) - 2
         
-        # Draw with "Nice Color" (Cyan Box, Bold White Text inside)
+        current_color = curses.color_pair(colors[color_cycle % len(colors)]) | curses.A_BOLD
+        
         for i, line in enumerate(lines):
             start_x = (max_x // 2) - (len(line) // 2)
-            if 0 <= start_y + i < max_y and 0 <= start_x < max_x:
-                # Color logic: Borders Cyan, Text White
-                if i == 0 or i == 3:
-                    stdscr.addstr(start_y + i, start_x, line, curses.color_pair(4) | curses.A_BOLD)
-                else:
-                    # Split string to color borders differently than text
-                    stdscr.addstr(start_y + i, start_x, line, curses.color_pair(4) | curses.A_BOLD)
-                    # Overwrite the text part with White
-                    inner_text = line[1:-1]
-                    stdscr.addstr(start_y + i, start_x + 1, inner_text, curses.color_pair(2) | curses.A_BOLD)
+            safe_addstr(stdscr, start_y + i, start_x, line, current_color)
+            
+            if i in [1, 2]:
+                inner_text = line[1:-1]
+                safe_addstr(stdscr, start_y + i, start_x + 1, inner_text, curses.color_pair(2) | curses.A_BOLD)
 
         stdscr.refresh()
+        color_cycle += 1
         time.sleep(1)
 
-# --- MODE 3: BOUNCE TEXT ---
+# --- MODE 2: BOUNCE TEXT (Color Changing) ---
 def run_bounce_text(stdscr):
     max_y, max_x = stdscr.getmaxyx()
     x, y = 2, 2
     dx, dy = 1, 1
+    # Note: Using the complex text provided by the user
     text = " ⫷J⫸⫷0⫸⫷4⫸⫷e⫸⫷r⫸ "
+    color_cycle = 3
+    colors = [3, 4, 5, 6] # Yellow, Cyan, Red, Magenta
     
     while True:
         if check_exit(stdscr): break
         
-        # Handle resize
         curr_y, curr_x = stdscr.getmaxyx()
         if (curr_y, curr_x) != (max_y, max_x):
             max_y, max_x = curr_y, curr_x
@@ -112,22 +127,122 @@ def run_bounce_text(stdscr):
 
         stdscr.clear()
         
-        # Draw
-        if 0 <= y < max_y and 0 <= x < max_x - len(text):
-            stdscr.addstr(y, x, text, curses.color_pair(3) | curses.A_BOLD)
+        current_color = curses.color_pair(colors[color_cycle % len(colors)]) | curses.A_BOLD
+        
+        safe_addstr(stdscr, y, x, text, current_color)
             
-        # Move
         x += dx
         y += dy
         
-        # Bounce Logic
         if x <= 1 or x + len(text) >= max_x - 1: dx *= -1
         if y <= 1 or y >= max_y - 1: dy *= -1
         
         stdscr.refresh()
+        
+        # Change color every frame for rapid cycling effect
+        color_cycle += 1 
         time.sleep(0.05)
 
-# --- MODE 7: RAIN DOTS ---
+# --- MODE 3: MATRIX RAIN ---
+def run_matrix_rain(stdscr):
+    max_y, max_x = stdscr.getmaxyx()
+    drops = [0] * max_x
+    chars = "0123456789abcdefABCDEF<>/\\"
+    
+    while True:
+        if check_exit(stdscr): break
+        
+        curr_y, curr_x = stdscr.getmaxyx()
+        if (curr_y, curr_x) != (max_y, max_x):
+            max_y, max_x = curr_y, curr_x
+            drops = [0] * max_x
+            stdscr.clear()
+        
+        for x in range(max_x - 1):
+            if 0 <= drops[x] < max_y:
+                try: stdscr.addch(drops[x], x, random.choice(chars), curses.color_pair(2) | curses.A_BOLD)
+                except: pass
+
+            if 0 <= drops[x] - 1 < max_y:
+                try: stdscr.addch(drops[x] - 1, x, random.choice(chars), curses.color_pair(1))
+                except: pass
+            
+            if 0 <= drops[x] - 10 < max_y:
+                try: stdscr.addch(drops[x] - 10, x, " ")
+                except: pass
+            
+            drops[x] += 1
+            if drops[x] - 10 > max_y or random.random() > 0.95:
+                drops[x] = random.randint(-max_y, 0)
+
+        stdscr.refresh()
+        time.sleep(0.05)
+
+
+# --- MODE 4: HOURGLASS (Up/Down Turning) ---
+def run_hourglass(stdscr):
+    sand_total = 20
+    sand_top = sand_total
+    sand_bot = 0
+    flip_phase = 0
+    
+    while True:
+        if check_exit(stdscr): break
+        stdscr.clear()
+        h, w = stdscr.getmaxyx()
+        cy, cx = h//2, w//2
+        
+        # --- LOGIC ---
+        if flip_phase == 0:
+            if sand_top > 0:
+                sand_top -= 1; sand_bot += 1
+            else:
+                flip_phase = 1
+                time.sleep(0.5)
+        elif flip_phase == 1:
+            sand_top, sand_bot = sand_total, 0
+            flip_phase = 2
+        elif flip_phase == 2:
+            flip_phase = 0
+            time.sleep(0.5)
+
+        # --- DRAWING ---
+        c_glass = curses.color_pair(4) | curses.A_BOLD
+        c_sand = curses.color_pair(3) | curses.A_BOLD
+        
+        HW = 14
+        HH = 7
+        
+        # Draw Frame
+        safe_addstr(stdscr, cy - HH, cx - HW, "+" + "-"*(HW*2 - 2) + "+", c_glass)
+        safe_addstr(stdscr, cy + HH, cx - HW, "+" + "-"*(HW*2 - 2) + "+", c_glass)
+        for i in range(1, HH):
+            safe_addstr(stdscr, cy - HH + i, cx - HW + i, "\\", c_glass)
+            safe_addstr(stdscr, cy - HH + i, cx + HW - i - 1, "/", c_glass)
+            safe_addstr(stdscr, cy + HH - i, cx - HW + i, "/", c_glass)
+            safe_addstr(stdscr, cy + HH - i, cx + HW - i - 1, "\\", c_glass)
+
+        # Draw Sand
+        sand_count = sand_top
+        for i in range(1, HH):
+            if sand_count <= 0: break
+            w_sand = (HH - i) * 2 - 1
+            sand_str = "#" * w_sand
+            safe_addstr(stdscr, cy - HH + i, cx - w_sand // 2, sand_str, c_sand)
+            sand_count -= w_sand
+            
+        sand_count = sand_bot
+        for i in range(1, HH):
+            if sand_count <= 0: break
+            w_sand = (i * 2) - 1
+            sand_str = "#" * w_sand
+            safe_addstr(stdscr, cy + HH - i, cx - w_sand // 2, sand_str, c_sand)
+            sand_count -= w_sand
+
+        stdscr.refresh()
+        time.sleep(0.1)
+
+# --- MODE 5: RAIN DOTS ---
 def run_rain_dots(stdscr):
     max_y, max_x = stdscr.getmaxyx()
     cols = [0] * max_x
@@ -135,7 +250,6 @@ def run_rain_dots(stdscr):
     while True:
         if check_exit(stdscr): break
         
-        # Resize check
         curr_y, curr_x = stdscr.getmaxyx()
         if (curr_y, curr_x) != (max_y, max_x):
             max_y, max_x = curr_y, curr_x
@@ -144,22 +258,20 @@ def run_rain_dots(stdscr):
         
         stdscr.clear()
         
-        # Draw logic based on original script
-        # Note: Original script clears screen and redraws whole line.
-        # In curses we just place the dots at the specific coordinates.
         for x in range(max_x - 1):
             y = cols[x]
             if 0 <= y < max_y:
-                # Use Green for matrix vibe, or White for rain
-                stdscr.addch(y, x, ".", curses.color_pair(4) if x % 2 == 0 else curses.color_pair(2))
+                color = curses.color_pair(4) if x % 2 == 0 else curses.color_pair(2)
+                try:
+                    stdscr.addch(y, x, ".", color)
+                except: pass
             
-            # Update logic from original script
             cols[x] = (cols[x] + random.randint(0,1)) % max_y
 
         stdscr.refresh()
         time.sleep(0.05)
 
-# --- MODE 9: CHECKER ---
+# --- MODE 6: CHECKER ---
 def run_checker(stdscr):
     p = False
     while True:
@@ -171,13 +283,8 @@ def run_checker(stdscr):
         block = "█ "
         
         for y in range(max_y - 1):
-            # Calculate repetition needed to fill width
             pattern = (block if (y % 2 == p) else " " + block.strip()) * (max_x // 2 + 1)
-            # Trim to screen width
-            pattern = pattern[:max_x-1]
-            try:
-                stdscr.addstr(y, 0, pattern, curses.color_pair(6)) # Magenta checker
-            except: pass
+            safe_addstr(stdscr, y, 0, pattern, curses.color_pair(6))
             
         p = not p
         stdscr.refresh()
@@ -193,35 +300,38 @@ def main_menu(stdscr):
         
         title = "=== TERMINAL SCREENSAVER ==="
         options = [
-            "[1] Clock Box (Nice Color)", 
-            "[2] Bounce Text", 
-            "[3] Rain Dots", 
-            "[4] Checker", 
+            "[1] Clock Box (Color Cycle)", 
+            "[2] Bounce Text (Color Cycle)", 
+            "[3] Matrix Rain",
+            "[4] Hourglass (Flip)",
+            "[5] Rain Dots", 
+            "[6] Checker", 
             "[Q] Quit"
         ]
         
-        start_y = h // 2 - 4
-        # Draw Title
-        stdscr.addstr(start_y, w//2 - len(title)//2, title, curses.color_pair(3) | curses.A_BOLD)
+        start_y = h // 2 - 5
+        safe_addstr(stdscr, start_y, w//2 - len(title)//2, title, curses.color_pair(3) | curses.A_BOLD)
         
-        # Draw Options
         for idx, opt in enumerate(options):
-            stdscr.addstr(start_y + 2 + idx, w//2 - len(opt)//2, opt, curses.color_pair(2))
+            safe_addstr(stdscr, start_y + 2 + idx, w//2 - len(opt)//2, opt, curses.color_pair(2))
 
         stdscr.refresh()
         
-        # Wait for input
         stdscr.nodelay(0)
         key = stdscr.getch()
 
-        # Handle Choices
+        # Handle Choices (Sequential 1, 2, 3, 4, 5, 6)
         if key == ord('1'):
             run_clock_box(stdscr)
         elif key == ord('2'):
             run_bounce_text(stdscr)
         elif key == ord('3'):
-            run_rain_dots(stdscr)
+            run_matrix_rain(stdscr)
         elif key == ord('4'):
+            run_hourglass(stdscr)
+        elif key == ord('5'):
+            run_rain_dots(stdscr)
+        elif key == ord('6'):
             run_checker(stdscr)
         elif key in [ord('q'), ord('Q')]:
             break
@@ -230,7 +340,7 @@ if __name__ == "__main__":
     try:
         curses.wrapper(main_menu)
     except Exception as e:
-        print(f"Error: {e}")
+        pass 
 PYTHON_EOF
 
 # 4. Permissions and Done
@@ -239,6 +349,8 @@ chmod +x /usr/local/bin/scr
 echo -e "${GREEN}"
 echo "========================================="
 echo "  SCREENSAVER INSTALLED SUCCESSFULLY"
+echo "  Menu is now 1, 2, 3, 4, 5, 6"
+echo "  Bounce Text is Color Cycling"
 echo "========================================="
 echo -e "${NC}"
 echo -e "Command created: ${YELLOW}scr${NC}"
