@@ -110,9 +110,9 @@ def run_clock_box(stdscr):
 # --- MODE 2: BOUNCE TEXT (Color Changing) ---
 def run_bounce_text(stdscr):
     max_y, max_x = stdscr.getmaxyx()
-    x, y = 2, 2
-    dx, dy = 1, 1
-    text = " ⫷J⫸⫷0⫸⫷4⫸⫷e⫸⫷r⫸ "
+    x, y = 3, 3
+    dx, dy = 1, 1 
+    text = " 🅙̣̣  ⓿̣̣  ❹̣̣  🅔̣̣  🅡̣̣  🎩 "
     color_cycle = 3
     colors = [3, 4, 5, 6] # Yellow, Cyan, Red, Magenta
     
