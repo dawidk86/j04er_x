@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # install-tool.sh - Install any script/folder (Bash or Python) as a system command
 # Usage: install-tool.sh -i <folder|script.sh|script.py>
 set -euo pipefail
@@ -15,13 +14,11 @@ show_help() {
     cat <<EOF
 Usage: $(basename "$0") -i <folder|script.sh|script.py>
   -i <path> Path to a script file (.sh or .py) OR a folder containing scripts
-  -h        Show this help
-
+  -h Show this help
 Examples:
   $(basename "$0") -i ~/mytools/scan.sh
   $(basename "$0") -i ~/mytools/webscan.py
   $(basename "$0") -i ~/mytools/scan_project/
-
 Supported:
   • Single .sh or .py files
   • Project folders with main.sh, main.py, run.py, start.sh, etc.
@@ -39,7 +36,6 @@ while (( $# )); do
         *) echo -e "${RED}Unknown option: $1${NC}"; show_help ;;
     esac
 done
-
 [[ -z "$input_path" ]] && { echo -e "${RED}Error: -i is required${NC}"; show_help; }
 
 # Resolve full path
@@ -78,18 +74,12 @@ if [[ -f "$input_path" ]]; then
     filename="$(basename "$input_path")"
     ext="${filename##*.}"
     target="/usr/local/bin/$tool_name"
-
     if [[ "$ext" == "sh" ]]; then
-        # Bash script
         sudo cp "$input_path" "$target"
         sudo chmod +x "$target"
         echo -e "${GREEN}Installed Bash script → $target${NC}"
-
     elif [[ "$ext" == "py" ]]; then
-        # Python script
-        sudo cp "$input_path" "$target.py"  # Keep .py for clarity
-
-        # Detect if script has shebang
+        sudo cp "$input_path" "$target.py"
         if head -1 "$input_path" | grep -q "^#!/usr/bin/env python"; then
             shebang="#!/usr/bin/env python3"
         elif head -1 "$input_path" | grep -q "^#!/usr/bin/python"; then
@@ -97,8 +87,6 @@ if [[ -f "$input_path" ]]; then
         else
             shebang="#!/usr/bin/env python3"
         fi
-
-        # Create executable wrapper
         sudo tee "$target" > /dev/null <<EOF
 #!/bin/bash
 exec $shebang "$target.py" "\$@"
@@ -106,13 +94,11 @@ EOF
         sudo chmod +x "$target"
         sudo chmod +x "$target.py"
         echo -e "${GREEN}Installed Python script → $target${NC}"
-        echo -e "   Script: $target.py"
-
+        echo -e " Script: $target.py"
     else
         echo -e "${RED}Error: Unsupported file type. Use .sh or .py${NC}"
         exit 1
     fi
-
     exit 0
 fi
 
@@ -123,61 +109,31 @@ if [[ -d "$input_path" ]]; then
     opt_dir="/opt/$tool_name"
     wrapper="/usr/local/bin/$tool_name"
 
-    # Detect main script: prioritize .py if both exist
     main_script=""
     for candidate in "main.py" "$tool_name.py" "run.py" "start.py" "bin/main.py" "bin/run.py"; do
-        if [[ -f "$input_path/$candidate" ]]; then
-            main_script="$candidate"
-            break
-        fi
+        [[ -f "$input_path/$candidate" ]] && main_script="$candidate" && break
     done
-
-    # Fallback to .sh if no .py found
     if [[ -z "$main_script" ]]; then
         for candidate in "main.sh" "$tool_name.sh" "start.sh" "run.sh" "bin/main.sh" "bin/run.sh"; do
-            if [[ -f "$input_path/$candidate" ]]; then
-                main_script="$candidate"
-                break
-            fi
+            [[ -f "$input_path/$candidate" ]] && main_script="$candidate" && break
         done
     fi
-
     if [[ -z "$main_script" ]]; then
         echo -e "${RED}Error: No main script found in folder!${NC}"
-        echo "Expected one of:"
-        echo "  main.py, $tool_name.py, run.py, start.py"
-        echo "  main.sh, $tool_name.sh, start.sh, run.sh"
-        echo "  bin/*.py or bin/*.sh"
         exit 1
     fi
 
-    # Determine script type
-    script_type=""
-    if [[ "$main_script" =~ \.py$ ]]; then
-        script_type="python"
-    elif [[ "$main_script" =~ \.sh$ ]]; then
-        script_type="bash"
-    else
-        echo -e "${RED}Unknown script type: $main_script${NC}"
-        exit 1
-    fi
+    script_type=""; [[ "$main_script" =~ \.py$ ]] && script_type="python" || script_type="bash"
 
-    # Install to /opt/
     sudo mkdir -p "$opt_dir"
     sudo cp -r "$input_path"/* "$opt_dir/" 2>/dev/null || true
-    sudo cp -r "$input_path"/.* "$opt_dir/" 2>/dev/null || true  # hidden files
+    sudo cp -r "$input_path"/.* "$opt_dir/" 2>/dev/null || true
 
-    # Optional: detect and activate virtual environment
     venv_path=""
-    if [[ -f "$opt_dir/venv/bin/activate" ]]; then
-        venv_path="$opt_dir/venv"
-    elif [[ -f "$opt_dir/.venv/bin/activate" ]]; then
-        venv_path="$opt_dir/.venv"
-    fi
+    [[ -f "$opt_dir/venv/bin/activate" ]] && venv_path="$opt_dir/venv"
+    [[ -f "$opt_dir/.venv/bin/activate" ]] && venv_path="$opt_dir/.venv"
 
-    # Create wrapper
     if [[ "$script_type" == "python" ]]; then
-        # Python wrapper with optional venv
         if [[ -n "$venv_path" ]]; then
             echo -e "${BLUE}Virtual environment detected: $venv_path${NC}"
             sudo tee "$wrapper" > /dev/null <<EOF
@@ -192,22 +148,19 @@ exec python3 "$opt_dir/$main_script" "\$@"
 EOF
         fi
     else
-        # Bash wrapper
         sudo tee "$wrapper" > /dev/null <<EOF
 #!/bin/bash
 exec "$opt_dir/$main_script" "\$@"
 EOF
     fi
-
     sudo chmod +x "$wrapper"
     echo -e "${GREEN}Multi-file project installed!${NC}"
     echo " Files → $opt_dir/"
-    echo " Main  → $main_script"
-    [[ -n "$venv_path" ]] && echo " Venv  → $venv_path"
+    echo " Main → $main_script"
+    [[ -n "$venv_path" ]] && echo " Venv → $venv_path"
     echo " Command → $tool_name"
     exit 0
 fi
 
-# ————————————————————————————————————————————————————————
 echo -e "${RED}Error: Input must be a .sh/.py file or a directory${NC}"
 exit 1
