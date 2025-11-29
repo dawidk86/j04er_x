@@ -2,7 +2,7 @@
 
 # --- CONFIGURATION ---
 DELAY=0.09                # Speed of movement (lower is faster)
-TEXT_KALI="J04ER"          # Text below clock
+TEXT_KALI="J04er 🎩"          # Text below clock
 
 # --- SETUP ---
 # Function to cleanup screen and cursor on exit (Ctrl+C)
@@ -23,8 +23,8 @@ WIDTH=$(tput cols)
 HEIGHT=$(tput lines)
 
 # Initial position (start near middle)
-x=$((WIDTH / 2))
-y=$((HEIGHT / 2))
+x=$((WIDTH / 3))
+y=$((HEIGHT / 3))
 
 # Initial velocity (direction)
 dx=1
