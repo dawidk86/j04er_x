@@ -1,23 +1,18 @@
-#!/bin/bash
-
-# === ipe - IP & HTTP Link Extractor Auto-Installer ===
-# Run this script to install 'ipe' globally
-
-set -e  # Exit on any error
-
-SCRIPT_NAME="ipe"
-INSTALL_DIR="/usr/local/bin"
-DESKTOP_SCRIPT="$INSTALL_DIR/$SCRIPT_NAME"
-PYTHON_SCRIPT_CONTENT='import sys
+#!/usr/bin/env python3
+import sys
 import os
 import re
 from urllib.parse import urlparse
 import ipaddress
 
+# Define the output file names
 IP_FILENAME = "ex_ip.txt"
 HTTP_FILENAME = "ex_http.txt"
 
 def is_ip_address(domain):
+    """
+    Checks if a domain string is actually an IP address.
+    """
     try:
         ipaddress.ip_address(domain)
         return True
@@ -25,130 +20,118 @@ def is_ip_address(domain):
         return False
 
 def extract_data_from_sources(sources, output_dir):
+    """
+    Processes a list of file paths, extracts IPs and links.
+    """
     print(f"Starting extraction...")
     print(f"Output directory set to: {output_dir}")
+
     unique_ips = set()
     unique_links = set()
-    IP_PATTERN = r'\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}(?::[0-9]+)?\b'
-    HTTP_PATTERN = r'https?://[^\s]+'
+
+    # Regex patterns
+    IP_PATTERN = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?\b'
+    HTTP_PATTERN = r'https?:\/\/[^\s]+'
 
     for full_path in sources:
         if not os.path.isfile(full_path):
             continue
+            
         print(f"Processing: {os.path.basename(full_path)}")
+        
         try:
-            with open(full_path, 'r', encoding="utf-8", errors="ignore") as f:
+            with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-
+            
+            # 1. Extract raw IPs
             unique_ips.update(re.findall(IP_PATTERN, content))
+            
+            # 2. Extract Links and Filter IPs out of them
             raw_links = re.findall(HTTP_PATTERN, content)
-
+            
             for link in raw_links:
                 try:
-                    parsed = urlparse(link)
-                    host = parsed.hostname
-                    if host and not is_ip_address(host):
-                        unique_links.add(link.strip())
-                except:
+                    parsed_url = urlparse(link)
+                    hostname = parsed_url.hostname
+                    
+                    # Only add if it is NOT an IP address
+                    if hostname and not is_ip_address(hostname):
+                        unique_links.add(link)
+                except Exception:
                     continue
+
         except Exception as e:
             print(f"Error reading {full_path}: {e}")
+            
+    # Construct full output paths
+    ip_output_path = os.path.join(output_dir, IP_FILENAME)
+    http_output_path = os.path.join(output_dir, HTTP_FILENAME)
 
-    ip_path = os.path.join(output_dir, IP_FILENAME)
-    http_path = os.path.join(output_dir, HTTP_FILENAME)
-
+    # Save IPs
     try:
-        with open(ip_path, "w") as f:
+        with open(ip_output_path, 'w') as f:
             for ip in sorted(unique_ips):
-                f.write(ip + "\n")
-        with open(http_path, "w") as f:
-            for link in sorted(unique_links):
-                f.write(link + "\n")
+                f.write(ip + '\n')
     except PermissionError:
-        print(f"Permission denied writing to {output_dir}. Try running with sudo or choose a writable folder.")
-        sys.exit(1)
+        print(f"Error: Permission denied writing to {ip_output_path}")
+        return
 
+    # Save Links
+    try:
+        with open(http_output_path, 'w') as f:
+            for link in sorted(unique_links):
+                f.write(link + '\n')
+    except PermissionError:
+        print(f"Error: Permission denied writing to {http_output_path}")
+        return
+            
     print("---")
     print("✅ Extraction complete!")
-    print(f"IPs saved to: {ip_path}")
-    print(f"Links saved to: {http_path}")
+    print(f"IPs saved to:   {ip_output_path}")
+    print(f"Links saved to: {http_output_path}")
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage:")
-        print("  ipe -i <folder>        → Extract from all files in folder")
-        print("  ipe <file>             → Extract from single file")
-        print("  ipe --uninstall        → Remove ipe from system")
+        print("Usage 1 (Folder):      ipe -i <folder_path>")
+        print("Usage 2 (Single File): ipe <file_path>")
         sys.exit(1)
 
-    if sys.argv[1] == "--uninstall":
-        echo "Removing $DESKTOP_SCRIPT..."
-        sudo rm -f "$DESKTOP_SCRIPT"
-        echo "✅ ipe has been uninstalled."
-        exit 0
+    source_files = []
+    output_directory = ""
 
-    sources = []
-    output_dir = ""
-
-    if len(sys.argv) == 3 and sys.argv[1] == "-i":
-        folder = os.path.abspath(sys.argv[2])
-        if not os.path.isdir(folder):
-            print(f"Error: Folder not found: {folder}")
+    # Check for the folder flag (-i)
+    if sys.argv[1] == '-i':
+        if len(sys.argv) != 3:
+            print("Error: -i flag requires a folder path.")
             sys.exit(1)
-        output_dir = folder
-        for f in os.listdir(folder):
-            fp = os.path.join(folder, f)
-            if os.path.isfile(fp):
-                sources.append(fp)
+            
+        folder_path = sys.argv[2]
+        if not os.path.isdir(folder_path):
+            print(f"Error: Directory '{folder_path}' not found.")
+            sys.exit(1)
+
+        output_directory = folder_path
+
+        for item_name in os.listdir(folder_path):
+            full_path = os.path.join(folder_path, item_name)
+            if os.path.isfile(full_path):
+                source_files.append(full_path)
+    
+    # Check if input is a single file
     elif os.path.isfile(sys.argv[1]):
-        fp = os.path.abspath(sys.argv[1])
-        sources.append(fp)
-        output_dir = os.path.dirname(fp)
+        file_path = os.path.abspath(sys.argv[1])
+        source_files.append(file_path)
+        output_directory = os.path.dirname(file_path)
+        
     else:
-        print("Error: Invalid usage. See help above.")
+        print(f"Error: Argument '{sys.argv[1]}' is not a valid flag (-i) or file.")
         sys.exit(1)
-
-    if not sources:
-        print("No files to process.")
+        
+    if not source_files:
+        print("Warning: No files found to process.")
         sys.exit(0)
-
-    extract_data_from_sources(sources, output_dir)
+        
+    extract_data_from_sources(source_files, output_directory)
 
 if __name__ == "__main__":
     main()
-'
-
-echo "========================================"
-echo "   Installing 'ipe' - IP & Link Extractor"
-echo "========================================"
-
-# Check for sudo
-if [[ $EUID -ne 0 && ! -w "$INSTALL_DIR" ]]; then
-    echo "This script needs sudo to install ipe to $INSTALL_DIR"
-    sudo -v || exit 1
-fi
-
-# Write the Python script with proper shebang
-echo "Installing $SCRIPT_NAME command..."
-
-cat > /tmp/ipe_temp.py << EOF
-#!/usr/bin/env python3
-$PYTHON_SCRIPT_CONTENT
-EOF
-
-# Make executable and move to bin
-sudo mv /tmp/ipe_temp.py "$DESKTOP_SCRIPT"
-sudo chmod +x "$DESKTOP_SCRIPT"
-
-echo "✅ 'ipe' installed successfully!"
-echo ""
-echo "Usage:"
-echo "   ipe -i /path/to/folder        → Process all files in folder"
-echo "   ipe /path/to/file.txt         → Process single file"
-echo "   ipe --uninstall               → Remove ipe completely"
-echo ""
-echo "Output files will be created as:"
-echo "   ex_ip.txt     → Extracted IP addresses"
-echo "   ex_http.txt   → Clean HTTP/S links (no IP hosts)"
-echo ""
-echo "You can now run 'ipe' from any directory! 🎉"
