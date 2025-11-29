@@ -6,14 +6,14 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-INSTALL_DIR="/opt/doclog"
-BIN_PATH="/usr/local/bin/doclog"
-IMAGE_NAME="doclog-target"
+INSTALL_DIR="/opt/docklog"
+BIN_PATH="/usr/local/bin/docklog"
+IMAGE_NAME="docklog-target"
 
 # Clear screen and show menu
 clear
 echo "========================================"
-echo "      DocLog Environment Installer       "
+echo "      DockLog Environment Installer       "
 echo "========================================"
 echo "Which login page template do you want to use?"
 echo ""
@@ -179,13 +179,13 @@ else
     exit 1
 fi
 
-# 5. Create the System Shortcut (The 'doclog' command)
+# 5. Create the System Shortcut (The 'docklog' command)
 # Note: We use the H_ variables defined above to customize the output message
 cat > "$BIN_PATH" << EOF
 #!/bin/bash
 clear
 echo "========================================"
-echo "      DocLog - Login Target Active       "
+echo "      DockLog - Login Target Active       "
 echo "========================================"
 
 # Check for Docker
@@ -202,14 +202,14 @@ echo ""
 echo ""
 
 # Cleanup old container if exists
-docker rm -f doclog-container > /dev/null 2>&1
+docker rm -f docklog-container > /dev/null 2>&1
 
 # Run Container
 echo "[*] Starting container..."
 docker run -d -p 85:8080 \\
     -e TARGET_USER="\$U_SET" \\
     -e TARGET_PASS="\$P_SET" \\
-    --name doclog-container \\
+    --name docklog-container \\
     $IMAGE_NAME > /dev/null
 
 if [ \$? -eq 0 ]; then
@@ -236,4 +236,4 @@ echo "[+] Shortcut created at $BIN_PATH"
 
 echo ""
 echo "SUCCESS! Installation complete."
-echo "Type 'doclog' to run the server."
+echo "Type 'docklog' to run the server."
