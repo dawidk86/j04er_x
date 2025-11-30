@@ -64,7 +64,6 @@ scripts=(
     "netmon.sh:netmon"
     "pepino.sh:pepino"
     "kali.sh:kali"
-    "docklog.sh:doclog"
     "scr.sh:scr"
     "clk.sh:clk"
     "iph.py:iph"
