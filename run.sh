@@ -65,6 +65,7 @@ scripts=(
     "pepino.sh:pepino"
     "kali.sh:kali"
     "scr.sh:scr"
+    "cap.sh:cap"
     "clk.sh:clk"
     "iph.py:iph"
     "dfr.sh:dfr"
