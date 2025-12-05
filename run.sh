@@ -61,6 +61,7 @@ scripts=(
     "clt.sh:clt"
     "ipe.py:ipe"
     "ipl.sh:ipl"
+    "ipp.sh:ipp"
     "netmon.sh:netmon"
     "pepino.sh:pepino"
     "kali.sh:kali"
